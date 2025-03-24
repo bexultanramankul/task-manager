@@ -9,24 +9,30 @@ import (
 	"task-manager/pkg/logger"
 )
 
-func main() {
-	logger.InitLogger()
-	log := logger.Log
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	if _, err := fmt.Fprintln(w, "Task Manager API is running!"); err != nil {
+		logger.Log.Error("Ошибка записи в ResponseWriter:", err)
+	}
+}
 
-	log.Info("Загрузка конфигурации...")
-	config.LoadConfig()
-
-	log.Info("Подключение к базе данных...")
-	database.InitDB()
-
+func startServer() {
 	port := ":" + os.Getenv("SERVER_PORT")
-	log.Infof("Сервер запущен на http://localhost%s", port)
+	logger.Log.Infof("Сервер запущен на http://localhost%s", port)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Task Manager API is running!")
-	})
+	http.HandleFunc("/", handleRoot)
 
 	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatal("Ошибка запуска сервера:", err)
+		logger.Log.Fatal("Ошибка запуска сервера:", err)
 	}
+}
+
+func main() {
+	logger.InitLogger()
+	logger.Log.Info("Загрузка конфигурации...")
+	config.LoadConfig()
+
+	logger.Log.Info("Подключение к базе данных...")
+	database.InitDB()
+
+	startServer()
 }
