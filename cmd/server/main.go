@@ -7,10 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"task-manager/internal/database"
 	"time"
 
 	"task-manager/internal/config"
-	"task-manager/pkg/database"
 	"task-manager/pkg/logger"
 )
 
