@@ -7,11 +7,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"task-manager/internal/database"
-	"time"
-
 	"task-manager/internal/config"
+	"task-manager/internal/delivery"
+	"task-manager/internal/repository"
+	"task-manager/internal/routes"
+	"task-manager/internal/storage"
+	"task-manager/internal/usecase"
 	"task-manager/pkg/logger"
+	"time"
 )
 
 // Обработчик корневого маршрута
@@ -21,18 +24,42 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Функция для запуска HTTP-сервера
-func startServer() {
+func main() {
+	// Инициализация логера
+	logger.InitLogger()
+	logger.Log.Info("Loading configuration...")
+	config.LoadConfig()
+
+	// Подключение к базе данных
+	logger.Log.Info("Connecting to the storage...")
+	storage.InitDB()
+
+	taskRepo := repository.NewTaskRepository(storage.DB)
+	boardRepo := repository.NewBoardRepository(storage.DB)
+	userRepo := repository.NewUserRepository(storage.DB)
+
+	taskUsecase := usecase.NewTaskUsecase(taskRepo)
+	boardUsecase := usecase.NewBoardUsecase(boardRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo)
+
+	taskHandler := delivery.NewTaskHandler(taskUsecase)
+	boardHandler := delivery.NewBoardHandler(boardUsecase)
+	userHandler := delivery.NewUserHandler(userUsecase)
+
+	// Создание маршрутизатора
+	r := router.NewRouter(taskHandler, boardHandler, userHandler)
+
+	// Добавляем корневой обработчик
+	r.HandleFunc("/", handleRoot).Methods("GET")
+
+	// Запуск сервера
 	port := ":" + config.AppConfig.Server.Port
-	logger.Log.Infof("Server is running at http://localhost%s", port)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleRoot)
-
 	server := &http.Server{
 		Addr:    port,
-		Handler: mux,
+		Handler: r, // Используем маршрутизатор gorilla/mux
 	}
+
+	logger.Log.Infof("Server is running at http://localhost%s", port)
 
 	// Запуск сервера в отдельной горутине
 	go func() {
@@ -41,11 +68,9 @@ func startServer() {
 		}
 	}()
 
-	// Канал для обработки сигнала завершения работы
+	// Ожидание сигнала завершения
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	// Ожидание сигнала завершения
 	<-stop
 	logger.Log.Info("Shutting down server...")
 
@@ -59,20 +84,6 @@ func startServer() {
 		logger.Log.Info("Server shutdown complete")
 	}
 
-	// Закрытие подключения к базе данных
-	database.CloseDB()
-}
-
-func main() {
-	// Инициализация логера
-	logger.InitLogger()
-	logger.Log.Info("Loading configuration...")
-	config.LoadConfig()
-
-	// Подключение к базе данных
-	logger.Log.Info("Connecting to the database...")
-	database.InitDB()
-
-	// Запуск HTTP-сервера
-	startServer()
+	// Закрытие базы данных
+	storage.CloseDB()
 }

@@ -2,7 +2,6 @@ package models
 
 import "time"
 
-// Task represents a task in the task manager.
 type Task struct {
 	ID             int       `json:"id"`
 	UserID         int       `json:"user_id"`                    // Владелец задачи (кто создал)

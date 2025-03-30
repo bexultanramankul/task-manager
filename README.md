@@ -123,3 +123,15 @@ CTRL + C
 docker-compose down
 
 ```
+
+```sh
+
+go get github.com/gorilla/mux
+
+```
+
+```sh
+
+go get golang.org/x/crypto/bcrypt
+
+```

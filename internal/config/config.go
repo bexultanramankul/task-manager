@@ -44,7 +44,7 @@ func LoadConfig() {
 	}
 
 	if AppConfig.Database.User == "" || AppConfig.Database.Password == "" {
-		log.Fatal("Missing required database configuration (user/password)")
+		log.Fatal("Missing required storage configuration (user/password)")
 	}
 
 	log.Info("Configuration loaded successfully")

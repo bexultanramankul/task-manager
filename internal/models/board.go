@@ -2,7 +2,6 @@ package models
 
 import "time"
 
-// Board represents a task board.
 type Board struct {
 	ID        int       `json:"id"`
 	UserID    int       `json:"user_id"` // Владелец доски

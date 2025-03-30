@@ -1,4 +1,4 @@
-package database
+package storage
 
 import (
 	"database/sql"
@@ -43,7 +43,7 @@ func InitDB() {
 func CloseDB() {
 	if DB != nil {
 		if err := DB.Close(); err != nil {
-			logger.Log.Warn("Error closing database: ", err)
+			logger.Log.Warn("Error closing storage: ", err)
 		} else {
 			logger.Log.Info("Database connection closed")
 		}
