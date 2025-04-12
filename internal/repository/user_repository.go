@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 )
 
 type UserRepoImpl struct {
@@ -16,16 +16,16 @@ func NewUserRepository(db *sql.DB) *UserRepoImpl {
 	return &UserRepoImpl{db}
 }
 
-func (r *UserRepoImpl) GetAllUsers() ([]models.User, error) {
+func (r *UserRepoImpl) GetAllUsers() ([]model.User, error) {
 	rows, err := r.db.Query("SELECT id, username, email, created_at, updated_at FROM users")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var users []models.User
+	var users []model.User
 	for rows.Next() {
-		var user models.User
+		var user model.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -39,8 +39,8 @@ func (r *UserRepoImpl) GetAllUsers() ([]models.User, error) {
 	return users, nil
 }
 
-func (r *UserRepoImpl) GetUserByID(id int) (*models.User, error) {
-	var user models.User
+func (r *UserRepoImpl) GetUserByID(id int) (*model.User, error) {
+	var user model.User
 	err := r.db.QueryRow(
 		"SELECT id, username, email, created_at, updated_at FROM users WHERE id = $1", id,
 	).Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt)
@@ -55,7 +55,7 @@ func (r *UserRepoImpl) GetUserByID(id int) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepoImpl) RegisterUser(user *models.User) error {
+func (r *UserRepoImpl) RegisterUser(user *model.User) error {
 	err := r.db.QueryRow(`
 		INSERT INTO users (username, email, password_hash, created_at, updated_at)
 		VALUES ($1, $2, $3, NOW(), NOW())
@@ -77,7 +77,7 @@ func (r *UserRepoImpl) RegisterUser(user *models.User) error {
 	return nil
 }
 
-func (r *UserRepoImpl) UpdateUser(user *models.User) error {
+func (r *UserRepoImpl) UpdateUser(user *model.User) error {
 	result, err := r.db.Exec(`
 		UPDATE users 
 		SET username = $1, email = $2, updated_at = NOW()

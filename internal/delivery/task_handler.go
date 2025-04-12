@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 	"task-manager/internal/usecase"
 )
 
@@ -42,7 +42,7 @@ func (h *TaskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-	var task models.Task
+	var task model.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -57,7 +57,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
-	var task models.Task
+	var task model.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return

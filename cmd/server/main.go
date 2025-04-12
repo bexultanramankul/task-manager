@@ -10,7 +10,7 @@ import (
 	"task-manager/internal/config"
 	"task-manager/internal/delivery"
 	"task-manager/internal/repository"
-	"task-manager/internal/routes"
+	"task-manager/internal/router"
 	"task-manager/internal/storage"
 	"task-manager/internal/usecase"
 	"task-manager/pkg/logger"

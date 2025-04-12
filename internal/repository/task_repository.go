@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 )
 
 type TaskRepoImpl struct {
@@ -16,7 +16,7 @@ func NewTaskRepository(db *sql.DB) *TaskRepoImpl {
 	return &TaskRepoImpl{db}
 }
 
-func (r *TaskRepoImpl) GetAllTasks() ([]models.Task, error) {
+func (r *TaskRepoImpl) GetAllTasks() ([]model.Task, error) {
 	const query = `
         SELECT id, user_id, board_id, assigned_user_id, title, description, 
                status, created_at, updated_at 
@@ -29,9 +29,9 @@ func (r *TaskRepoImpl) GetAllTasks() ([]models.Task, error) {
 	}
 	defer rows.Close()
 
-	tasks := make([]models.Task, 0)
+	tasks := make([]model.Task, 0)
 	for rows.Next() {
-		var task models.Task
+		var task model.Task
 		if err := rows.Scan(&task.ID, &task.UserID, &task.BoardID, &task.AssignedUserID,
 			&task.Title, &task.Description, &task.Status, &task.CreatedAt, &task.UpdatedAt); err != nil {
 			return nil, err
@@ -46,7 +46,7 @@ func (r *TaskRepoImpl) GetAllTasks() ([]models.Task, error) {
 	return tasks, nil
 }
 
-func (r *TaskRepoImpl) GetTaskByID(id int) (*models.Task, error) {
+func (r *TaskRepoImpl) GetTaskByID(id int) (*model.Task, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("invalid task ID: %d", id)
 	}
@@ -58,7 +58,7 @@ func (r *TaskRepoImpl) GetTaskByID(id int) (*models.Task, error) {
 		WHERE id = $1
 	`
 
-	var task models.Task
+	var task model.Task
 	err := r.db.QueryRow(query, id).Scan(&task.ID, &task.UserID, &task.BoardID, &task.AssignedUserID,
 		&task.Title, &task.Description, &task.Status, &task.CreatedAt, &task.UpdatedAt)
 
@@ -72,7 +72,7 @@ func (r *TaskRepoImpl) GetTaskByID(id int) (*models.Task, error) {
 	return &task, nil
 }
 
-func (r *TaskRepoImpl) CreateTask(task *models.Task) error {
+func (r *TaskRepoImpl) CreateTask(task *model.Task) error {
 	const query = `
 		INSERT INTO tasks (user_id, board_id, assigned_user_id, title, description, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
@@ -89,7 +89,7 @@ func (r *TaskRepoImpl) CreateTask(task *models.Task) error {
 	return nil
 }
 
-func (r *TaskRepoImpl) UpdateTask(task *models.Task) error {
+func (r *TaskRepoImpl) UpdateTask(task *model.Task) error {
 	if task.ID <= 0 {
 		return fmt.Errorf("invalid task ID: %d", task.ID)
 	}

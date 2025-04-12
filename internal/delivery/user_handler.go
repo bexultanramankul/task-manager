@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 	"task-manager/internal/usecase"
 )
 
@@ -42,7 +42,7 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var user models.User
+	var user model.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -57,7 +57,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	var user models.User
+	var user model.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return

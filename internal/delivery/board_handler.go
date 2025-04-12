@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 	"task-manager/internal/usecase"
 )
 
@@ -42,7 +42,7 @@ func (h *BoardHandler) GetBoardByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
-	var board models.Board
+	var board model.Board
 	if err := json.NewDecoder(r.Body).Decode(&board); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -57,7 +57,7 @@ func (h *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
-	var board models.Board
+	var board model.Board
 	if err := json.NewDecoder(r.Body).Decode(&board); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return

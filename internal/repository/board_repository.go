@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 )
 
 type BoardRepoImpl struct {
@@ -16,7 +16,7 @@ func NewBoardRepository(db *sql.DB) *BoardRepoImpl {
 	return &BoardRepoImpl{db}
 }
 
-func (r *BoardRepoImpl) GetAllBoards() ([]models.Board, error) {
+func (r *BoardRepoImpl) GetAllBoards() ([]model.Board, error) {
 	const query = "SELECT id, user_id, name, is_private, created_at FROM boards"
 
 	rows, err := r.db.Query(query)
@@ -25,9 +25,9 @@ func (r *BoardRepoImpl) GetAllBoards() ([]models.Board, error) {
 	}
 	defer rows.Close()
 
-	boards := make([]models.Board, 0)
+	boards := make([]model.Board, 0)
 	for rows.Next() {
-		var board models.Board
+		var board model.Board
 		if err := rows.Scan(&board.ID, &board.UserID, &board.Name, &board.IsPrivate, &board.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -41,14 +41,14 @@ func (r *BoardRepoImpl) GetAllBoards() ([]models.Board, error) {
 	return boards, nil
 }
 
-func (r *BoardRepoImpl) GetBoardByID(id int) (*models.Board, error) {
+func (r *BoardRepoImpl) GetBoardByID(id int) (*model.Board, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("invalid board ID: %d", id)
 	}
 
 	const query = "SELECT id, user_id, name, is_private, created_at FROM boards WHERE id = $1"
 
-	var board models.Board
+	var board model.Board
 	err := r.db.QueryRow(query, id).Scan(&board.ID, &board.UserID, &board.Name, &board.IsPrivate, &board.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -60,7 +60,7 @@ func (r *BoardRepoImpl) GetBoardByID(id int) (*models.Board, error) {
 	return &board, nil
 }
 
-func (r *BoardRepoImpl) CreateBoard(board *models.Board) error {
+func (r *BoardRepoImpl) CreateBoard(board *model.Board) error {
 	const query = `
 		INSERT INTO boards (user_id, name, is_private) 
 		VALUES ($1, $2, COALESCE($3, FALSE)) 
@@ -74,7 +74,7 @@ func (r *BoardRepoImpl) CreateBoard(board *models.Board) error {
 	return nil
 }
 
-func (r *BoardRepoImpl) UpdateBoard(board *models.Board) error {
+func (r *BoardRepoImpl) UpdateBoard(board *model.Board) error {
 	if board.ID <= 0 {
 		return fmt.Errorf("invalid board ID: %d", board.ID)
 	}

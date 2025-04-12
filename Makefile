@@ -1,7 +1,7 @@
 # Настройки базы данных
 DB_URL="postgres://postgres:password@localhost:5432/task_manager?sslmode=disable"
 MIGRATIONS_DIR=db/migrations
-NAME=
+NAME=beks
 VERSION=1
 
 .PHONY: up down force goto version create
@@ -17,10 +17,6 @@ down:
 # Откатить ВСЕ миграции
 down-all:
 	migrate -path $(MIGRATIONS_DIR) -database $(DB_URL) down
-
-# Принудительно задать версию миграции (указать VERSION=номер)
-force:
-	migrate -path $(MIGRATIONS_DIR) -database $(DB_URL) force $(VERSION)
 
 # Перейти к конкретной версии миграции (указать VERSION=номер)
 goto:

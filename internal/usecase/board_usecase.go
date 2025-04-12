@@ -1,22 +1,22 @@
 package usecase
 
 import (
-	"task-manager/internal/models"
+	"task-manager/internal/model"
 )
 
 type BoardRepository interface {
-	GetAllBoards() ([]models.Board, error)
-	GetBoardByID(id int) (*models.Board, error)
-	CreateBoard(board *models.Board) error
-	UpdateBoard(board *models.Board) error
+	GetAllBoards() ([]model.Board, error)
+	GetBoardByID(id int) (*model.Board, error)
+	CreateBoard(board *model.Board) error
+	UpdateBoard(board *model.Board) error
 	DeleteBoard(id int) error
 }
 
 type BoardUsecase interface {
-	GetAllBoards() ([]models.Board, error)
-	GetBoardByID(id int) (*models.Board, error)
-	CreateBoard(board *models.Board) error
-	UpdateBoard(board *models.Board) error
+	GetAllBoards() ([]model.Board, error)
+	GetBoardByID(id int) (*model.Board, error)
+	CreateBoard(board *model.Board) error
+	UpdateBoard(board *model.Board) error
 	DeleteBoard(id int) error
 }
 
@@ -28,19 +28,19 @@ func NewBoardUsecase(repo BoardRepository) BoardUsecase {
 	return &boardUsecase{repo}
 }
 
-func (u *boardUsecase) GetAllBoards() ([]models.Board, error) {
+func (u *boardUsecase) GetAllBoards() ([]model.Board, error) {
 	return u.repo.GetAllBoards()
 }
 
-func (u *boardUsecase) GetBoardByID(id int) (*models.Board, error) {
+func (u *boardUsecase) GetBoardByID(id int) (*model.Board, error) {
 	return u.repo.GetBoardByID(id)
 }
 
-func (u *boardUsecase) CreateBoard(board *models.Board) error {
+func (u *boardUsecase) CreateBoard(board *model.Board) error {
 	return u.repo.CreateBoard(board)
 }
 
-func (u *boardUsecase) UpdateBoard(board *models.Board) error {
+func (u *boardUsecase) UpdateBoard(board *model.Board) error {
 	return u.repo.UpdateBoard(board)
 }
 
