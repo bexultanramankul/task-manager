@@ -1,130 +1,109 @@
 package repository
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"task-manager/internal/model"
+	"task-manager/pkg/logger"
+
+	"gorm.io/gorm"
 )
 
-type BoardRepoImpl struct {
-	db *sql.DB
+type boardRepoGorm struct {
+	db *gorm.DB
 }
 
-func NewBoardRepository(db *sql.DB) *BoardRepoImpl {
-	return &BoardRepoImpl{db}
+func NewBoardRepository(db *gorm.DB) *boardRepoGorm {
+	return &boardRepoGorm{db: db}
 }
 
-func (r *BoardRepoImpl) GetAllBoards() ([]model.Board, error) {
-	const query = "SELECT id, user_id, name, is_private, created_at FROM boards"
-
-	rows, err := r.db.Query(query)
-	if err != nil {
+func (r *boardRepoGorm) GetAllBoards() ([]model.Board, error) {
+	var boards []model.Board
+	if err := r.db.Find(&boards).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	boards := make([]model.Board, 0)
-	for rows.Next() {
-		var board model.Board
-		if err := rows.Scan(&board.ID, &board.UserID, &board.Name, &board.IsPrivate, &board.CreatedAt); err != nil {
-			return nil, err
-		}
-		boards = append(boards, board)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
 	return boards, nil
 }
 
-func (r *BoardRepoImpl) GetBoardByID(id int) (*model.Board, error) {
-	if id <= 0 {
+func (r *boardRepoGorm) GetBoardByID(id uint) (*model.Board, error) {
+	if id == 0 {
 		return nil, fmt.Errorf("invalid board ID: %d", id)
 	}
 
-	const query = "SELECT id, user_id, name, is_private, created_at FROM boards WHERE id = $1"
-
 	var board model.Board
-	err := r.db.QueryRow(query, id).Scan(&board.ID, &board.UserID, &board.Name, &board.IsPrivate, &board.CreatedAt)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	if err := r.db.First(&board, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("board not found")
 		}
-		return nil, fmt.Errorf("failed to get board: %w", err)
+		return nil, err
 	}
-
 	return &board, nil
 }
 
-func (r *BoardRepoImpl) CreateBoard(board *model.Board) error {
-	const query = `
-		INSERT INTO boards (user_id, name, is_private) 
-		VALUES ($1, $2, COALESCE($3, FALSE)) 
-		RETURNING id, created_at`
-
-	err := r.db.QueryRow(query, board.UserID, board.Name, board.IsPrivate).Scan(&board.ID, &board.CreatedAt)
-	if err != nil {
+func (r *boardRepoGorm) CreateBoard(board *model.Board) error {
+	if err := r.db.Create(board).Error; err != nil {
 		return fmt.Errorf("failed to create board: %w", err)
 	}
-
 	return nil
 }
 
-func (r *BoardRepoImpl) UpdateBoard(board *model.Board) error {
-	if board.ID <= 0 {
+func (r *boardRepoGorm) UpdateBoard(board *model.Board) error {
+	if board.ID == 0 {
 		return fmt.Errorf("invalid board ID: %d", board.ID)
 	}
 
-	const query = `
-		UPDATE boards 
-		SET name = $1, is_private = $2, updated_at = NOW() 
-		WHERE id = $3`
+	result := r.db.Model(&model.Board{}).
+		Where("id = ?", board.ID).
+		Updates(map[string]interface{}{
+			"name":       board.Name,
+			"is_private": board.IsPrivate,
+		})
 
-	result, err := r.db.Exec(query, board.Name, board.IsPrivate, board.ID)
-	if err != nil {
-		return fmt.Errorf("failed to update board %d: %w", board.ID, err)
+	if result.Error != nil {
+		return result.Error
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected for board %d: %w", board.ID, err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		return errors.New("board not found")
 	}
 
-	log.Printf("Board %d updated successfully", board.ID)
-
+	logger.Log.Printf("Board %d updated successfully", board.ID)
 	return nil
 }
 
-func (r *BoardRepoImpl) DeleteBoard(id int) error {
-	if id <= 0 {
+func (r *boardRepoGorm) DeleteBoard(id uint) error {
+	if id == 0 {
 		return fmt.Errorf("invalid board ID: %d", id)
 	}
 
-	const query = "DELETE FROM boards WHERE id = $1"
-
-	result, err := r.db.Exec(query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete board %d: %w", id, err)
+	result := r.db.Delete(&model.Board{}, id)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete board: %w", result.Error)
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected for board %d: %w", id, err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		return errors.New("board not found")
 	}
 
-	log.Printf("Board %d deleted successfully", id)
+	logger.Log.Printf("Board %d deleted successfully", id)
+	return nil
+}
 
+func (r *boardRepoGorm) BlockBoard(id uint, adminID uint) error {
+	if id == 0 {
+		return fmt.Errorf("invalid board ID: %d", id)
+	}
+
+	result := r.db.Model(&model.Board{}).
+		Where("id = ?", id).
+		Update("is_blocked", true)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to block board %d: %w", id, result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("board not found or already blocked")
+	}
+
+	logger.Log.Printf("Board %d has been blocked by admin %d", id, adminID)
 	return nil
 }

@@ -1,20 +1,17 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"task-manager/internal/config"
-	"task-manager/internal/delivery"
+	"task-manager/internal/handler"
+	"task-manager/internal/model"
 	"task-manager/internal/repository"
 	"task-manager/internal/router"
 	"task-manager/internal/storage"
 	"task-manager/internal/usecase"
 	"task-manager/pkg/logger"
-	"time"
 )
 
 // Обработчик корневого маршрута
@@ -28,62 +25,64 @@ func main() {
 	// Инициализация логера
 	logger.InitLogger()
 	logger.Log.Info("Loading configuration...")
-	config.LoadConfig()
+
+	if err := config.LoadConfig("./configs"); err != nil {
+		logger.Log.Fatal("Failed to load config: ", err)
+	}
+
+	cfg := config.GetConfig()
 
 	// Подключение к базе данных
 	logger.Log.Info("Connecting to the storage...")
 	storage.InitDB()
+	db := storage.DB
 
-	taskRepo := repository.NewTaskRepository(storage.DB)
-	boardRepo := repository.NewBoardRepository(storage.DB)
-	userRepo := repository.NewUserRepository(storage.DB)
+	// Auto migrate models
+	logger.Log.Info("Running auto migrations...")
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Board{},
+		&model.Task{},
+	); err != nil {
+		logger.Log.Fatal("Failed to auto migrate models: ", err)
+	}
 
-	taskUsecase := usecase.NewTaskUsecase(taskRepo)
+	// 5. Инициализация репозиториев
+	logger.Log.Info("Initializing repositories...")
+	boardRepo := repository.NewBoardRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	// 6. Инициализация use cases
+	logger.Log.Info("Initializing use cases...")
 	boardUsecase := usecase.NewBoardUsecase(boardRepo)
+	taskUsecase := usecase.NewTaskUsecase(taskRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 
-	taskHandler := delivery.NewTaskHandler(taskUsecase)
-	boardHandler := delivery.NewBoardHandler(boardUsecase)
-	userHandler := delivery.NewUserHandler(userUsecase)
+	// 7. Инициализация обработчиков
+	logger.Log.Info("Initializing handlers...")
+	boardHandler := handler.NewBoardHandler(boardUsecase)
+	taskHandler := handler.NewTaskHandler(taskUsecase)
+	userHandler := handler.NewUserHandler(userUsecase, cfg.Auth.JWTSecret)
 
-	// Создание маршрутизатора
-	r := router.NewRouter(taskHandler, boardHandler, userHandler)
+	// 8. Настройка маршрутизатора
+	logger.Log.Info("Setting up router...")
+	r := router.SetupRouter(
+		userHandler,
+		taskHandler,
+		boardHandler,
+		config.GetConfig().Auth.JWTSecret,
+	)
 
-	// Добавляем корневой обработчик
-	r.HandleFunc("/", handleRoot).Methods("GET")
+	// 9. Настройка корневого маршрута
+	r.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "Task Manager API is running!")
+	})
 
-	// Запуск сервера
-	port := ":" + config.AppConfig.Server.Port
-	server := &http.Server{
-		Addr:    port,
-		Handler: r, // Используем маршрутизатор gorilla/mux
+	// 10. Запуск сервера
+	serverConfig := cfg.Server
+	logger.Log.Infof("Starting server on %s:%s", serverConfig.Host, serverConfig.Port)
+	if err := r.Run(fmt.Sprintf("%s:%s", serverConfig.Host, serverConfig.Port)); err != nil {
+		logger.Log.Fatal("Failed to start server: ", err)
 	}
-
-	logger.Log.Infof("Server is running at http://localhost%s", port)
-
-	// Запуск сервера в отдельной горутине
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Log.Fatal("Server error: ", err)
-		}
-	}()
-
-	// Ожидание сигнала завершения
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
-	logger.Log.Info("Shutting down server...")
-
-	// Контекст с таймаутом для корректного завершения сервера
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Log.Warn("Error during server shutdown: ", err)
-	} else {
-		logger.Log.Info("Server shutdown complete")
-	}
-
-	// Закрытие базы данных
-	storage.CloseDB()
 }

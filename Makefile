@@ -1,7 +1,7 @@
 # Настройки базы данных
 DB_URL="postgres://postgres:password@localhost:5432/task_manager?sslmode=disable"
 MIGRATIONS_DIR=db/migrations
-NAME=beks
+NAME=add_user_role_and_is_block
 VERSION=1
 
 .PHONY: up down force goto version create

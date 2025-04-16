@@ -55,7 +55,6 @@ CREATE TRIGGER trigger_update_boards
     FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
--- Индексы
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_tasks_board_id ON tasks(board_id);

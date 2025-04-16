@@ -6,25 +6,18 @@ import (
 
 type BoardRepository interface {
 	GetAllBoards() ([]model.Board, error)
-	GetBoardByID(id int) (*model.Board, error)
+	GetBoardByID(id uint) (*model.Board, error)
 	CreateBoard(board *model.Board) error
 	UpdateBoard(board *model.Board) error
-	DeleteBoard(id int) error
-}
-
-type BoardUsecase interface {
-	GetAllBoards() ([]model.Board, error)
-	GetBoardByID(id int) (*model.Board, error)
-	CreateBoard(board *model.Board) error
-	UpdateBoard(board *model.Board) error
-	DeleteBoard(id int) error
+	DeleteBoard(id uint) error
+	BlockBoard(id uint, adminID uint) error
 }
 
 type boardUsecase struct {
 	repo BoardRepository
 }
 
-func NewBoardUsecase(repo BoardRepository) BoardUsecase {
+func NewBoardUsecase(repo BoardRepository) *boardUsecase {
 	return &boardUsecase{repo}
 }
 
@@ -32,7 +25,7 @@ func (u *boardUsecase) GetAllBoards() ([]model.Board, error) {
 	return u.repo.GetAllBoards()
 }
 
-func (u *boardUsecase) GetBoardByID(id int) (*model.Board, error) {
+func (u *boardUsecase) GetBoardByID(id uint) (*model.Board, error) {
 	return u.repo.GetBoardByID(id)
 }
 
@@ -44,6 +37,10 @@ func (u *boardUsecase) UpdateBoard(board *model.Board) error {
 	return u.repo.UpdateBoard(board)
 }
 
-func (u *boardUsecase) DeleteBoard(id int) error {
+func (u *boardUsecase) DeleteBoard(id uint) error {
 	return u.repo.DeleteBoard(id)
+}
+
+func (u *boardUsecase) BlockBoard(id uint, adminID uint) error {
+	return u.repo.BlockBoard(id, adminID)
 }

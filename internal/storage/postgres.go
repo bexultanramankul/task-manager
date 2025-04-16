@@ -1,17 +1,17 @@
 package storage
 
 import (
-	"database/sql"
 	"fmt"
 	"sync"
 	"task-manager/internal/config"
 	"task-manager/pkg/logger"
 
-	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var (
-	DB   *sql.DB
+	DB   *gorm.DB
 	once sync.Once
 )
 
@@ -19,7 +19,7 @@ func InitDB() {
 	log := logger.Log
 
 	once.Do(func() {
-		cfg := config.AppConfig.Database
+		cfg := config.GetConfig().Database
 
 		dsn := fmt.Sprintf(
 			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -27,22 +27,33 @@ func InitDB() {
 		)
 
 		var err error
-		DB, err = sql.Open("postgres", dsn)
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err != nil {
 			log.Fatal("Database connection error: ", err)
 		}
 
-		if err = DB.Ping(); err != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			log.Fatal("Failed to get generic database object: ", err)
+		}
+
+		if err = sqlDB.Ping(); err != nil {
 			log.Fatal("Database is unreachable: ", err)
 		}
 
-		log.Info("Connected to PostgreSQL")
+		log.Info("Connected to PostgreSQL with GORM")
 	})
 }
 
 func CloseDB() {
 	if DB != nil {
-		if err := DB.Close(); err != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			logger.Log.Warn("Failed to get generic database object: ", err)
+			return
+		}
+
+		if err := sqlDB.Close(); err != nil {
 			logger.Log.Warn("Error closing storage: ", err)
 		} else {
 			logger.Log.Info("Database connection closed")

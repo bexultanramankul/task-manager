@@ -1,34 +1,77 @@
 package router
 
 import (
-	"task-manager/internal/delivery"
-
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
+	"task-manager/internal/handler"
+	"task-manager/internal/middleware"
 )
 
-func NewRouter(taskHandler *delivery.TaskHandler, boardHandler *delivery.BoardHandler, userHandler *delivery.UserHandler) *mux.Router {
-	r := mux.NewRouter()
+func SetupRouter(
+	userHandler *handler.UserHandler,
+	taskHandler *handler.TaskHandler,
+	boardHandler *handler.BoardHandler,
+	jwtSecret string,
+) *gin.Engine {
+	r := gin.Default()
 
-	// Task router
-	r.HandleFunc("/tasks", taskHandler.GetAllTasks).Methods("GET")
-	r.HandleFunc("/tasks/{id:[0-9]+}", taskHandler.GetTaskByID).Methods("GET")
-	r.HandleFunc("/tasks", taskHandler.CreateTask).Methods("POST")
-	r.HandleFunc("/tasks/{id:[0-9]+}", taskHandler.UpdateTask).Methods("PUT")
-	r.HandleFunc("/tasks/{id:[0-9]+}", taskHandler.DeleteTask).Methods("DELETE")
+	// Инициализация middleware
+	authMiddleware := middleware.AuthMiddleware(jwtSecret)
+	accessMiddleware := middleware.NewAccessMiddleware(jwtSecret)
 
-	// Board router
-	r.HandleFunc("/boards", boardHandler.GetAllBoards).Methods("GET")
-	r.HandleFunc("/boards/{id:[0-9]+}", boardHandler.GetBoardByID).Methods("GET")
-	r.HandleFunc("/boards", boardHandler.CreateBoard).Methods("POST")
-	r.HandleFunc("/boards/{id:[0-9]+}", boardHandler.UpdateBoard).Methods("PUT")
-	r.HandleFunc("/boards/{id:[0-9]+}", boardHandler.DeleteBoard).Methods("DELETE")
+	// Группа публичных маршрутов (не требующих аутентификации)
+	public := r.Group("/api")
+	{
+		public.POST("/register", userHandler.RegisterUser)
+		public.POST("/login", userHandler.Login)
+	}
 
-	// User router
-	r.HandleFunc("/users", userHandler.GetAllUsers).Methods("GET")
-	r.HandleFunc("/users/{id:[0-9]+}", userHandler.GetUserByID).Methods("GET")
-	r.HandleFunc("/register", userHandler.RegisterUser).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", userHandler.UpdateUser).Methods("PUT")
-	r.HandleFunc("/users/{id:[0-9]+}", userHandler.DeleteUser).Methods("DELETE")
+	// Группа защищенных маршрутов (требующих аутентификации)
+	auth := r.Group("/api")
+	auth.Use(authMiddleware)
+	{
+		// Пользовательские маршруты
+		//auth.GET("/users/me", userHandler.GetCurrentUser)
+		//auth.PUT("/users/me", userHandler.UpdateCurrentUser)
+		//auth.DELETE("/users/me", userHandler.DeleteCurrentUser)
+
+		// Маршруты досок
+		auth.GET("/boards", boardHandler.GetAllBoards)
+		auth.POST("/boards", boardHandler.CreateBoard)
+
+		// Маршруты для конкретной доски
+		board := auth.Group("/boards/:id")
+		board.Use(accessMiddleware.BoardOwner())
+		{
+			board.GET("", boardHandler.GetBoard)
+			board.PUT("", boardHandler.UpdateBoard)
+			board.DELETE("", boardHandler.DeleteBoard)
+			board.POST("/block", boardHandler.BlockBoard)
+
+			// Маршруты задач для конкретной доски
+			//board.GET("/tasks", taskHandler.GetTasksByBoard)
+			board.POST("/tasks", taskHandler.CreateTask)
+		}
+
+		// Маршруты для конкретной задачи
+		task := auth.Group("/tasks/:id")
+		task.Use(accessMiddleware.TaskOwnerOrBoardOwner())
+		{
+			task.GET("", taskHandler.GetTask)
+			task.PUT("", taskHandler.UpdateTask)
+			task.DELETE("", taskHandler.DeleteTask)
+			task.POST("/block", taskHandler.BlockTask)
+		}
+
+		// Админские маршруты
+		admin := auth.Group("/admin")
+		admin.Use(accessMiddleware.AdminOnly())
+		{
+			admin.GET("/users", userHandler.GetAllUsers)
+			admin.GET("/users/:id", userHandler.GetUser)
+			admin.PUT("/users/:id", userHandler.UpdateUser)
+			admin.DELETE("/users/:id", userHandler.DeleteUser)
+		}
+	}
 
 	return r
 }

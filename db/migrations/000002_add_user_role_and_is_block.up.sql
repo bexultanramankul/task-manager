@@ -1,0 +1,14 @@
+CREATE TYPE user_role AS ENUM ('user', 'admin');
+
+ALTER TABLE users
+    ADD COLUMN role user_role NOT NULL DEFAULT 'user';
+
+ALTER TABLE boards
+    ADD COLUMN is_block BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE boards
+    ADD COLUMN board_admin_id INT REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE tasks
+    ADD COLUMN is_block BOOLEAN NOT NULL DEFAULT FALSE;
+
